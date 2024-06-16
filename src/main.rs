@@ -1,17 +1,13 @@
+use lazy_static::lazy_static;
 use std::{
     collections::HashMap,
-    process::{exit, Command, Stdio},
-};
-#[allow(unused_imports)]
-use std::{
     env,
     io::{self, Write},
     option::Option,
     path::{Path, PathBuf},
+    process::{exit, Command, Stdio},
     sync::RwLock,
 };
-
-use lazy_static::lazy_static;
 
 type BuiltinFunction = fn(Vec<&str>) -> ();
 type BuiltinMap = HashMap<String, BuiltinFunction>;
@@ -110,6 +106,21 @@ fn builtin_pwd(_: Vec<&str>) {
     }
 }
 
+fn builtin_cd(arguments: Vec<&str>) {
+    let mut absolute_path: Option<PathBuf> = None;
+
+    let path = arguments[1];
+    if path.starts_with("/") {
+        absolute_path = Some(Path::new(&path).into());
+    }
+
+    if let Some(path_buf) = absolute_path {
+        if let Err(_) = env::set_current_dir(path_buf) {
+            println!("cd: {}: No such file or directory", path);
+        }
+    }
+}
+
 lazy_static! {
     static ref BUILTINS: RwLock<BuiltinMap> = RwLock::new(HashMap::new());
 }
@@ -121,6 +132,7 @@ fn main() {
         builtins.insert("echo".into(), builtin_echo);
         builtins.insert("type".into(), builtin_type);
         builtins.insert("pwd".into(), builtin_pwd);
+        builtins.insert("cd".into(), builtin_cd);
     }
 
     loop {
