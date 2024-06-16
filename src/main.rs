@@ -2,10 +2,14 @@ use std::{collections::HashMap, process::exit};
 #[allow(unused_imports)]
 use std::{
     io::{self, Write},
-    option::Option
+    option::Option,
+    sync::RwLock
 };
 
-type BuiltinMap = HashMap<String, fn(Vec<&str>) -> ()>;
+use lazy_static::lazy_static;
+
+type BuiltinFunction = fn(Vec<&str>) -> ();
+type BuiltinMap = HashMap<String, BuiltinFunction>;
 
 fn read() -> Option<String> {
     let stdin: io::Stdin = io::stdin();
@@ -33,16 +37,27 @@ fn read() -> Option<String> {
     }
 }
 
-fn eval(line: String, builtins: &BuiltinMap) {
+fn eval(line: String) {
     let arguments: Vec<&str> = line.split(" ").collect::<Vec<&str>>();
     let program = arguments[0];
 
-    if let Some(builtin) = builtins.get(program) {
-        builtin(arguments);
-        return;
+    match query(program) {
+        Command::Builtin(builtin) => builtin(arguments),
+        Command::None => println!("{}: command not found", program),
+    }
+}
+
+enum Command {
+    Builtin(BuiltinFunction),
+    None
+}
+
+fn query(program: &str) -> Command {
+    if let Some(builtin) = BUILTINS.read().unwrap().get(program) {
+        return Command::Builtin(*builtin);
     }
 
-    println!("{}: command not found", program);
+    return Command::None;
 }
 
 fn builtin_exit(_: Vec<&str>) {
@@ -53,14 +68,30 @@ fn builtin_echo(arguments: Vec<&str>) {
     println!("{}", arguments[1..].join(" "));
 }
 
+fn builtin_type(arguments: Vec<&str>) {
+    let program = arguments[1];
+
+    match query(program) {
+        Command::Builtin(_) => println!("{} is a shell builtin", program),
+        Command::None => println!("{}: not found", program),
+    }
+}
+
+lazy_static! {
+    static ref BUILTINS: RwLock<BuiltinMap> = RwLock::new(HashMap::new());
+}
+
 fn main() {
-    let mut builtins: BuiltinMap = HashMap::new();
-    builtins.insert("exit".into(), builtin_exit);
-    builtins.insert("echo".into(), builtin_echo);
+    {
+        let mut builtins = BUILTINS.write().unwrap();
+        builtins.insert("exit".into(), builtin_exit);
+        builtins.insert("echo".into(), builtin_echo);
+        builtins.insert("type".into(), builtin_type);
+    }
 
     loop {
         match read() {
-            Some(line) => eval(line, &builtins),
+            Some(line) => eval(line),
             None => break,
         }
     }
