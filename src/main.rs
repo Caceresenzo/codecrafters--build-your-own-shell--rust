@@ -1,14 +1,45 @@
 #[allow(unused_imports)]
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    option::Option
+};
 
-fn main() {
-    print!("$ ");
-    io::stdout().flush().unwrap();
-
+fn read() -> Option<String> {
     let stdin: io::Stdin = io::stdin();
     let mut input = String::new();
-    stdin.read_line(&mut input).unwrap();
+    
+    loop {
+        print!("$ ");
+        io::stdout().flush().unwrap();
+    
+        let result: Option<String> = match stdin.read_line(&mut input) {
+            Err(_) => None,
+            Ok(size) if size == 0 => None,
+            Ok(_) => Some(input.trim().into()),
+        };
 
-    let program = &input[..input.len() - 1];
+        if let Some(ref line) = result {
+            if line.len() != 0 {
+                return result;
+            }
+        }
+
+        if let None = result {
+            return result;
+        }
+    }
+}
+
+fn eval(line: String) {
+    let program = line;
     println!("{}: command not found", program);
+}
+
+fn main() {
+    loop {
+        match read() {
+            Some(line) => eval(line),
+            None => break,
+        }
+    }
 }
