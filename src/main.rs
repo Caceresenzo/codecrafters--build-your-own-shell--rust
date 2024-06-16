@@ -116,6 +116,13 @@ fn builtin_cd(arguments: Vec<&str>) {
         if let Ok(current_path) = env::current_dir() {
             absolute_path = Some(Path::new(&current_path).join(path));
         }
+    } else if path.starts_with("~") {
+        match env::var("HOME") {
+            Ok(home) => {
+                absolute_path = Some(Path::new(&home).join(format!("./{}", &path[1..])));
+            }
+            Err(_) => println!("cd: $HOME not set"),
+        }
     }
 
     if let Some(path_buf) = absolute_path {
