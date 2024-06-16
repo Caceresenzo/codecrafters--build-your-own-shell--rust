@@ -112,6 +112,10 @@ fn builtin_cd(arguments: Vec<&str>) {
     let path = arguments[1];
     if path.starts_with("/") {
         absolute_path = Some(Path::new(&path).into());
+    } else if path.starts_with(".") {
+        if let Ok(current_path) = env::current_dir() {
+            absolute_path = Some(Path::new(&current_path).join(path));
+        }
     }
 
     if let Some(path_buf) = absolute_path {
