@@ -4,6 +4,7 @@ use std::{
     env,
     io::{self, Write},
     option::Option,
+    path::{Path, PathBuf},
     sync::RwLock,
 };
 
@@ -44,18 +45,30 @@ fn eval(line: String) {
 
     match query(program) {
         Command::Builtin(builtin) => builtin(arguments),
+        Command::Executable(_path) => panic!("not impl"),
         Command::None => println!("{}: command not found", program),
     }
 }
 
 enum Command {
     Builtin(BuiltinFunction),
+    Executable(PathBuf),
     None,
 }
 
 fn query(program: &str) -> Command {
     if let Some(builtin) = BUILTINS.read().unwrap().get(program) {
         return Command::Builtin(*builtin);
+    }
+
+    if let Ok(paths) = env::var("PATH") {
+        for directory in paths.split(":") {
+            let path = Path::new(directory).join(program);
+
+            if path.exists() {
+                return Command::Executable(path);
+            }
+        }
     }
 
     return Command::None;
@@ -74,6 +87,7 @@ fn builtin_type(arguments: Vec<&str>) {
 
     match query(program) {
         Command::Builtin(_) => println!("{} is a shell builtin", program),
+        Command::Executable(path) => println!("{} is {}", program, path.to_str().unwrap()),
         Command::None => println!("{}: not found", program),
     }
 }
