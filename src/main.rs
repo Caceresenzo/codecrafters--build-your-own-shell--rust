@@ -49,9 +49,14 @@ fn builtin_exit(_: Vec<&str>) {
     exit(0);
 }
 
+fn builtin_echo(arguments: Vec<&str>) {
+    println!("{}", arguments[1..].join(" "));
+}
+
 fn main() {
     let mut builtins: BuiltinMap = HashMap::new();
     builtins.insert("exit".into(), builtin_exit);
+    builtins.insert("echo".into(), builtin_echo);
 
     loop {
         match read() {
