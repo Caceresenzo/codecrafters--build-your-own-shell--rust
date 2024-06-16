@@ -103,6 +103,13 @@ fn builtin_type(arguments: Vec<&str>) {
     }
 }
 
+fn builtin_pwd(_: Vec<&str>) {
+    match env::current_dir() {
+        Err(e) => println!("pwd: {}", e),
+        Ok(path) => println!("{}", path.to_str().unwrap()),
+    }
+}
+
 lazy_static! {
     static ref BUILTINS: RwLock<BuiltinMap> = RwLock::new(HashMap::new());
 }
@@ -113,6 +120,7 @@ fn main() {
         builtins.insert("exit".into(), builtin_exit);
         builtins.insert("echo".into(), builtin_echo);
         builtins.insert("type".into(), builtin_type);
+        builtins.insert("pwd".into(), builtin_pwd);
     }
 
     loop {
