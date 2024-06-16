@@ -1,8 +1,11 @@
+use std::{collections::HashMap, process::exit};
 #[allow(unused_imports)]
 use std::{
     io::{self, Write},
     option::Option
 };
+
+type BuiltinMap = HashMap<String, fn(Vec<&str>) -> ()>;
 
 fn read() -> Option<String> {
     let stdin: io::Stdin = io::stdin();
@@ -30,15 +33,30 @@ fn read() -> Option<String> {
     }
 }
 
-fn eval(line: String) {
+fn eval(line: String, builtins: &BuiltinMap) {
     let program = line;
+
+    let arguments: Vec<&str> = program.split(" ").collect::<Vec<&str>>();
+
+    if let Some(builtin) = builtins.get(&program) {
+        builtin(arguments);
+        return;
+    }
+
     println!("{}: command not found", program);
 }
 
+fn builtin_exit(_: Vec<&str>) {
+    exit(0);
+}
+
 fn main() {
+    let mut builtins: BuiltinMap = HashMap::new();
+    builtins.insert("exit".into(), builtin_exit);
+
     loop {
         match read() {
-            Some(line) => eval(line),
+            Some(line) => eval(line, &builtins),
             None => break,
         }
     }
