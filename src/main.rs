@@ -1,9 +1,10 @@
 use std::{collections::HashMap, process::exit};
 #[allow(unused_imports)]
 use std::{
+    env,
     io::{self, Write},
     option::Option,
-    sync::RwLock
+    sync::RwLock,
 };
 
 use lazy_static::lazy_static;
@@ -14,11 +15,11 @@ type BuiltinMap = HashMap<String, BuiltinFunction>;
 fn read() -> Option<String> {
     let stdin: io::Stdin = io::stdin();
     let mut input = String::new();
-    
+
     loop {
         print!("$ ");
         io::stdout().flush().unwrap();
-    
+
         let result: Option<String> = match stdin.read_line(&mut input) {
             Err(_) => None,
             Ok(size) if size == 0 => None,
@@ -49,7 +50,7 @@ fn eval(line: String) {
 
 enum Command {
     Builtin(BuiltinFunction),
-    None
+    None,
 }
 
 fn query(program: &str) -> Command {
