@@ -34,11 +34,10 @@ fn read() -> Option<String> {
 }
 
 fn eval(line: String, builtins: &BuiltinMap) {
-    let program = line;
+    let arguments: Vec<&str> = line.split(" ").collect::<Vec<&str>>();
+    let program = arguments[0];
 
-    let arguments: Vec<&str> = program.split(" ").collect::<Vec<&str>>();
-
-    if let Some(builtin) = builtins.get(&program) {
+    if let Some(builtin) = builtins.get(program) {
         builtin(arguments);
         return;
     }
