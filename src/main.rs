@@ -1,4 +1,7 @@
-use std::{collections::HashMap, process::exit};
+use std::{
+    collections::HashMap,
+    process::{exit, Command, Stdio},
+};
 #[allow(unused_imports)]
 use std::{
     env,
@@ -44,21 +47,29 @@ fn eval(line: String) {
     let program = arguments[0];
 
     match query(program) {
-        Command::Builtin(builtin) => builtin(arguments),
-        Command::Executable(_path) => panic!("not impl"),
-        Command::None => println!("{}: command not found", program),
+        ShellCommand::Builtin(builtin) => builtin(arguments),
+        ShellCommand::Executable(path) => {
+            Command::new(path)
+                .args(&arguments[1..])
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .output()
+                .expect("failed to execute process");
+        }
+        ShellCommand::None => println!("{}: command not found", program),
     }
 }
 
-enum Command {
+enum ShellCommand {
     Builtin(BuiltinFunction),
     Executable(PathBuf),
     None,
 }
 
-fn query(program: &str) -> Command {
+fn query(program: &str) -> ShellCommand {
     if let Some(builtin) = BUILTINS.read().unwrap().get(program) {
-        return Command::Builtin(*builtin);
+        return ShellCommand::Builtin(*builtin);
     }
 
     if let Ok(paths) = env::var("PATH") {
@@ -66,12 +77,12 @@ fn query(program: &str) -> Command {
             let path = Path::new(directory).join(program);
 
             if path.exists() {
-                return Command::Executable(path);
+                return ShellCommand::Executable(path);
             }
         }
     }
 
-    return Command::None;
+    return ShellCommand::None;
 }
 
 fn builtin_exit(_: Vec<&str>) {
@@ -86,9 +97,9 @@ fn builtin_type(arguments: Vec<&str>) {
     let program = arguments[1];
 
     match query(program) {
-        Command::Builtin(_) => println!("{} is a shell builtin", program),
-        Command::Executable(path) => println!("{} is {}", program, path.to_str().unwrap()),
-        Command::None => println!("{}: not found", program),
+        ShellCommand::Builtin(_) => println!("{} is a shell builtin", program),
+        ShellCommand::Executable(path) => println!("{} is {}", program, path.to_str().unwrap()),
+        ShellCommand::None => println!("{}: not found", program),
     }
 }
 
