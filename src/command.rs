@@ -11,8 +11,8 @@ pub enum ShellCommand {
     None,
 }
 
-pub fn query(program: &str) -> ShellCommand {
-    if let Some(builtin) = REGISTRY.read().unwrap().get(program) {
+pub fn query(program: &String) -> ShellCommand {
+    if let Some(builtin) = REGISTRY.read().unwrap().get(program.as_str()) {
         return ShellCommand::Builtin(*builtin);
     }
 

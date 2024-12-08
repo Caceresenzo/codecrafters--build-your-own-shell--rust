@@ -10,23 +10,23 @@ use std::{
 
 use crate::{query, ShellCommand};
 
-pub type BuiltinFunction = fn(Vec<&str>) -> ();
+pub type BuiltinFunction = fn(Vec<String>) -> ();
 pub type BuiltinMap = HashMap<String, BuiltinFunction>;
 
 lazy_static! {
     pub static ref REGISTRY: RwLock<BuiltinMap> = RwLock::new(HashMap::new());
 }
 
-pub fn builtin_exit(_: Vec<&str>) {
+pub fn builtin_exit(_: Vec<String>) {
     exit(0);
 }
 
-pub fn builtin_echo(arguments: Vec<&str>) {
+pub fn builtin_echo(arguments: Vec<String>) {
     println!("{}", arguments[1..].join(" "));
 }
 
-pub fn builtin_type(arguments: Vec<&str>) {
-    let program = arguments[1];
+pub fn builtin_type(arguments: Vec<String>) {
+    let program = &arguments[1];
 
     match query(program) {
         ShellCommand::Builtin(_) => println!("{} is a shell builtin", program),
@@ -35,17 +35,17 @@ pub fn builtin_type(arguments: Vec<&str>) {
     }
 }
 
-pub fn builtin_pwd(_: Vec<&str>) {
+pub fn builtin_pwd(_: Vec<String>) {
     match env::current_dir() {
         Err(e) => println!("pwd: {}", e),
         Ok(path) => println!("{}", path.to_str().unwrap()),
     }
 }
 
-pub fn builtin_cd(arguments: Vec<&str>) {
+pub fn builtin_cd(arguments: Vec<String>) {
     let mut absolute_path: Option<PathBuf> = None;
 
-    let path = arguments[1];
+    let path = &arguments[1];
     if path.starts_with("/") {
         absolute_path = Some(Path::new(&path).into());
     } else if path.starts_with(".") {

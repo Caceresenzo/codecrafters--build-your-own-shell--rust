@@ -4,7 +4,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use shell_starter_rust::{query, register_default_builtins, ShellCommand};
+use shell_starter_rust::{query, register_default_builtins, ShellCommand, parse_argv};
 
 fn read() -> Option<String> {
     let stdin: io::Stdin = io::stdin();
@@ -33,9 +33,12 @@ fn read() -> Option<String> {
 }
 
 fn eval(line: String) {
-    let arguments: Vec<&str> = line.split(" ").collect::<Vec<&str>>();
-    let program = arguments[0];
+    let arguments: Vec<String> = parse_argv(line);
+    if arguments.is_empty() {
+        return
+    }
 
+    let program = &arguments[0];
     match query(program) {
         ShellCommand::Builtin(builtin) => builtin(arguments),
         ShellCommand::Executable(path) => {
