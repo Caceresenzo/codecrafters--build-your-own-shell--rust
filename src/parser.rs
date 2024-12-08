@@ -63,12 +63,23 @@ impl<'a> LineParser<'a> {
     }
 
     fn backslash(&mut self, in_quote: bool) {
-        if let Some(character) = self.chars.next() {
+        if let Some(mut character) = self.chars.next() {
             if in_quote {
-                self.builder.push(BACKSLASH);
+                if let Some(mapped) = LineParser::map_backslash_character(character) {
+                    character = mapped;
+                } else {
+                    self.builder.push(BACKSLASH);
+                }
             }
 
             self.builder.push(character);
+        }
+    }
+
+    fn map_backslash_character(character: char) -> Option<char> {
+        match character {
+            BACKSLASH | DOUBLE => Some(character),
+            _ => None,
         }
     }
 }
