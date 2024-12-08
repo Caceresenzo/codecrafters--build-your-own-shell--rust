@@ -2,6 +2,7 @@ pub use core::str::Chars;
 
 const SPACE: char = ' ';
 const SINGLE: char = '\'';
+const DOUBLE: char = '"';
 
 struct LineParser<'a> {
     chars: Chars<'a>,
@@ -32,6 +33,15 @@ impl<'a> LineParser<'a> {
                 SINGLE => {
                     while let Some(character) = self.chars.next() {
                         if character == SINGLE {
+                            break;
+                        }
+
+                        self.builder.push(character);
+                    }
+                }
+                DOUBLE => {
+                    while let Some(character) = self.chars.next() {
+                        if character == DOUBLE {
                             break;
                         }
 
