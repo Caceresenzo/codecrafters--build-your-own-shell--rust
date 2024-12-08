@@ -3,6 +3,7 @@ pub use core::str::Chars;
 const SPACE: char = ' ';
 const SINGLE: char = '\'';
 const DOUBLE: char = '"';
+const BACKSLASH: char = '\\';
 
 struct LineParser<'a> {
     chars: Chars<'a>,
@@ -41,16 +42,15 @@ impl<'a> LineParser<'a> {
                 }
                 DOUBLE => {
                     while let Some(character) = self.chars.next() {
-                        if character == DOUBLE {
-                            break;
+                        match character {
+                            DOUBLE => break,
+                            BACKSLASH => self.backslash(true),
+                            _ => self.builder.push(character),
                         }
-
-                        self.builder.push(character);
                     }
                 }
-                _ => {
-                    self.builder.push(character);
-                }
+                BACKSLASH => self.backslash(false),
+                _ => self.builder.push(character),
             }
         }
 
@@ -60,6 +60,16 @@ impl<'a> LineParser<'a> {
         }
 
         return argv;
+    }
+
+    fn backslash(&mut self, in_quote: bool) {
+        if let Some(character) = self.chars.next() {
+            if in_quote {
+                self.builder.push(BACKSLASH);
+            }
+
+            self.builder.push(character);
+        }
     }
 }
 
