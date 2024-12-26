@@ -1,3 +1,4 @@
+use crate::{query, RedirectStreams, ShellCommand};
 use lazy_static::lazy_static;
 use std::{
     collections::HashMap,
@@ -8,41 +9,41 @@ use std::{
     sync::RwLock,
 };
 
-use crate::{query, ShellCommand};
-
-pub type BuiltinFunction = fn(Vec<String>) -> ();
+pub type BuiltinFunction = fn(Vec<String>, &mut RedirectStreams) -> ();
 pub type BuiltinMap = HashMap<String, BuiltinFunction>;
 
 lazy_static! {
     pub static ref REGISTRY: RwLock<BuiltinMap> = RwLock::new(HashMap::new());
 }
 
-pub fn builtin_exit(_: Vec<String>) {
+pub fn builtin_exit(_: Vec<String>, _: &mut RedirectStreams) {
     exit(0);
 }
 
-pub fn builtin_echo(arguments: Vec<String>) {
-    println!("{}", arguments[1..].join(" "));
+pub fn builtin_echo(arguments: Vec<String>, io: &mut RedirectStreams) {
+    io.println(format!("{}", arguments[1..].join(" ")).as_str());
 }
 
-pub fn builtin_type(arguments: Vec<String>) {
+pub fn builtin_type(arguments: Vec<String>, io: &mut RedirectStreams) {
     let program = &arguments[1];
 
     match query(program) {
-        ShellCommand::Builtin(_) => println!("{} is a shell builtin", program),
-        ShellCommand::Executable(path) => println!("{} is {}", program, path.to_str().unwrap()),
-        ShellCommand::None => println!("{}: not found", program),
+        ShellCommand::Builtin(_) => io.println(format!("{} is a shell builtin", program).as_str()),
+        ShellCommand::Executable(path) => {
+            io.println(format!("{} is {}", program, path.to_str().unwrap()).as_str())
+        }
+        ShellCommand::None => io.println(format!("{}: not found", program).as_str()),
     }
 }
 
-pub fn builtin_pwd(_: Vec<String>) {
+pub fn builtin_pwd(_: Vec<String>, io: &mut RedirectStreams) {
     match env::current_dir() {
-        Err(e) => println!("pwd: {}", e),
-        Ok(path) => println!("{}", path.to_str().unwrap()),
+        Err(e) => io.println_error(format!("pwd: {}", e).as_str()),
+        Ok(path) => io.println(format!("{}", path.to_str().unwrap()).as_str()),
     }
 }
 
-pub fn builtin_cd(arguments: Vec<String>) {
+pub fn builtin_cd(arguments: Vec<String>, io: &mut RedirectStreams) {
     let mut absolute_path: Option<PathBuf> = None;
 
     let path = &arguments[1];
@@ -57,13 +58,13 @@ pub fn builtin_cd(arguments: Vec<String>) {
             Ok(home) => {
                 absolute_path = Some(Path::new(&home).join(format!("./{}", &path[1..])));
             }
-            Err(_) => println!("cd: $HOME not set"),
+            Err(_) => io.println_error("cd: $HOME not set"),
         }
     }
 
     if let Some(path_buf) = absolute_path {
         if let Err(_) = env::set_current_dir(path_buf) {
-            println!("cd: {}: No such file or directory", path);
+            io.println_error(format!("cd: {}: No such file or directory", path).as_str());
         }
     }
 }
