@@ -25,14 +25,45 @@ pub enum AutocompleteResult {
     More,
 }
 
-fn commit(line: &mut String, candidate: &String) {
+fn commit(line: &mut String, candidate: &String, has_more: bool) {
     line.push_str(candidate);
     io::stdout().write(candidate.as_bytes()).unwrap();
 
-    line.push(' ');
-    io::stdout().write(&[b' ']).unwrap();
+    if !has_more {
+        line.push(' ');
+        io::stdout().write(&[b' ']).unwrap();
+    }
 
     io::stdout().flush().unwrap();
+}
+
+fn find_shared_prefix(candidates: &Vec<String>) -> String {
+    let first = candidates.first().unwrap();
+
+    if first.is_empty() {
+        return "".into();
+    }
+
+    let mut end = 1;
+    for i in 1..first.len() + 1 {
+        end = i; // ugly
+
+        let mut one_is_not_matching = false;
+
+        for candidate in candidates.iter().skip(1) {
+            if first[..end] != candidate[..end] {
+                one_is_not_matching = true;
+                break;
+            }
+        }
+
+        if one_is_not_matching {
+            end -= 1;
+            break;
+        }
+    }
+
+    return first[..end].to_string();
 }
 
 pub fn autocomplete(line: &mut String, bell_rang: bool) -> AutocompleteResult {
@@ -73,7 +104,7 @@ pub fn autocomplete(line: &mut String, bell_rang: bool) -> AutocompleteResult {
     if candidates.is_empty() {
         return AutocompleteResult::None;
     } else if candidates.len() == 1 {
-        commit(line, &candidates[0]);
+        commit(line, &candidates[0], false);
         return AutocompleteResult::Found;
     }
 
@@ -86,6 +117,12 @@ pub fn autocomplete(line: &mut String, bell_rang: bool) -> AutocompleteResult {
             a.partial_cmp(b).unwrap()
         }
     });
+
+    let prefix = find_shared_prefix(&candidates);
+    if !prefix.is_empty() {
+        commit(line, &prefix, true);
+        return AutocompleteResult::Found;
+    }
 
     if bell_rang {
         io::stdout().write(&[b'\n']).unwrap();
