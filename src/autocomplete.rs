@@ -5,6 +5,11 @@ use std::{
 
 use crate::REGISTRY;
 
+pub fn bell() {
+    io::stdout().write(&[0x7]).unwrap();
+    io::stdout().flush().unwrap();
+}
+
 pub enum AutocompleteResult {
     None,
     Found,
