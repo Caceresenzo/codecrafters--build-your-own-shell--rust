@@ -11,7 +11,7 @@ use termios::{tcsetattr, Termios};
 use std::os::unix::process::CommandExt;
 
 use shell_starter_rust::{
-    parse_argv, query, register_default_builtins, RedirectStreams, ShellCommand,
+    autocomplete, parse_argv, query, register_default_builtins, RedirectStreams, ShellCommand,
 };
 
 fn prompt() {
@@ -69,6 +69,9 @@ fn read() -> ReadResult {
                     ReadResult::Content(line)
                 };
                 break;
+            }
+            '\t' => {
+                autocomplete(&mut line);
             }
             '\u{1b}' => {
                 let _ = io::stdin().read(&mut buffer); // '['
