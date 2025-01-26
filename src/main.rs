@@ -1,9 +1,11 @@
+use std::os::unix::io::RawFd;
 use std::{
     fs::File,
-    io::{self, Write},
-    option::Option,
+    io::{self, Read, Write},
     process::{Command, Stdio},
 };
+
+use termios::{tcsetattr, Termios};
 
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
@@ -12,30 +14,84 @@ use shell_starter_rust::{
     parse_argv, query, register_default_builtins, RedirectStreams, ShellCommand,
 };
 
-fn read() -> Option<String> {
-    let stdin: io::Stdin = io::stdin();
-    let mut input = String::new();
+fn prompt() {
+    io::stdout().write("$ ".as_bytes()).unwrap();
+    io::stdout().flush().unwrap();
+}
 
+enum ReadResult {
+    Quit,
+    Empty,
+    Content(String),
+}
+
+fn read() -> ReadResult {
+    prompt();
+
+    let stdin_fd: RawFd = 0;
+    let previous = Termios::from_fd(stdin_fd).unwrap();
+
+    let mut new = previous.clone();
+    new.c_iflag &= termios::IGNCR;
+    new.c_lflag ^= termios::ICANON;
+    new.c_lflag ^= termios::ECHO;
+    new.c_cc[termios::VMIN] = 1;
+    new.c_cc[termios::VTIME] = 0;
+
+    tcsetattr(stdin_fd, termios::TCSANOW, &new).unwrap();
+
+    let mut line = String::new();
+    let mut buffer = [0u8];
+
+    let result: ReadResult;
     loop {
-        print!("$ ");
-        io::stdout().flush().unwrap();
+        match io::stdin().read(&mut buffer) {
+            Err(_) | Ok(0) => {
+                result = ReadResult::Quit;
+                break;
+            }
+            Ok(_) => {}
+        }
 
-        let result: Option<String> = match stdin.read_line(&mut input) {
-            Err(_) => None,
-            Ok(size) if size == 0 => None,
-            Ok(_) => Some(input.trim().into()),
-        };
+        let character = buffer[0] as char;
+        match character {
+            '\u{4}' => {
+                result = ReadResult::Quit;
+                break;
+            }
+            '\r' | '\n' => {
+                io::stdout().write("\r\n".as_bytes()).unwrap();
+                io::stdout().flush().unwrap();
 
-        if let Some(ref line) = result {
-            if line.len() != 0 {
-                return result;
+                result = if line.len() == 0 {
+                    ReadResult::Empty
+                } else {
+                    ReadResult::Content(line)
+                };
+                break;
+            }
+            '\u{1b}' => {
+                let _ = io::stdin().read(&mut buffer); // '['
+                let _ = io::stdin().read(&mut buffer); // 'A' or 'B' or 'C' or 'D'
+            }
+            '\u{7f}' => {
+                if line.len() != 0 {
+                    line.pop();
+                    io::stdout().write("\u{8} \u{8}".as_bytes()).unwrap();
+                    io::stdout().flush().unwrap();
+                }
+            }
+            _ => {
+                io::stdout().write(&buffer).unwrap();
+                io::stdout().flush().unwrap();
+                line.push(character);
             }
         }
-
-        if let None = result {
-            return result;
-        }
     }
+
+    tcsetattr(stdin_fd, termios::TCSANOW, &previous).unwrap();
+
+    return result;
 }
 
 fn eval(line: String) {
@@ -82,8 +138,9 @@ fn main() {
 
     loop {
         match read() {
-            Some(line) => eval(line),
-            None => break,
+            ReadResult::Quit => break,
+            ReadResult::Empty => continue,
+            ReadResult::Content(line) => eval(line),
         }
     }
 }
