@@ -1,7 +1,11 @@
 use std::{
+    env, fs,
     io::{self, Write},
     vec::Vec,
 };
+
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
 use crate::REGISTRY;
 
@@ -33,6 +37,31 @@ pub fn autocomplete(line: &mut String) -> AutocompleteResult {
         if key.starts_with(&*line) {
             let candidate = &key[line.len()..];
             candidates.push(candidate.to_string());
+        }
+    }
+
+    if let Ok(paths) = env::var("PATH") {
+        for directory in paths.split(":") {
+            if let Ok(entries) = fs::read_dir(directory) {
+                for entry in entries {
+                    let entry = entry.unwrap();
+                    let name = entry.file_name().to_str().unwrap().to_string();
+
+                    if !&name.starts_with(&*line) {
+                        continue;
+                    }
+
+                    let metadata = entry.metadata().unwrap();
+                    if !metadata.is_file() || metadata.permissions().mode() & 0o111 == 0 {
+                        continue;
+                    }
+
+                    let candidate: String = name[line.len()..].into();
+                    if !candidates.contains(&candidate) {
+                        candidates.push(candidate);
+                    }
+                }
+            }
         }
     }
 
