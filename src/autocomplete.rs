@@ -9,6 +9,11 @@ use std::os::unix::fs::PermissionsExt;
 
 use crate::REGISTRY;
 
+pub fn prompt() {
+    io::stdout().write("$ ".as_bytes()).unwrap();
+    io::stdout().flush().unwrap();
+}
+
 pub fn bell() {
     io::stdout().write(&[0x7]).unwrap();
     io::stdout().flush().unwrap();
@@ -30,7 +35,7 @@ fn commit(line: &mut String, candidate: &String) {
     io::stdout().flush().unwrap();
 }
 
-pub fn autocomplete(line: &mut String) -> AutocompleteResult {
+pub fn autocomplete(line: &mut String, bell_rang: bool) -> AutocompleteResult {
     let mut candidates: Vec<String> = Vec::new();
 
     for key in REGISTRY.read().unwrap().keys() {
@@ -72,6 +77,33 @@ pub fn autocomplete(line: &mut String) -> AutocompleteResult {
         return AutocompleteResult::Found;
     }
 
-    todo!("more");
-    // return AutocompleteResult::More;
+    candidates.sort_by(|a, b| {
+        if a.len() < b.len() {
+            std::cmp::Ordering::Less
+        } else if a.len() > b.len() {
+            std::cmp::Ordering::Greater
+        } else {
+            a.partial_cmp(b).unwrap()
+        }
+    });
+
+    if bell_rang {
+        io::stdout().write(&[b'\n']).unwrap();
+
+        for (index, candidate) in candidates.iter().enumerate() {
+            if index != 0 {
+                io::stdout().write("  ".as_bytes()).unwrap();
+            }
+
+            io::stdout().write(&line.as_bytes()).unwrap();
+            io::stdout().write(&candidate.as_bytes()).unwrap();
+        }
+
+        io::stdout().write(&[b'\n']).unwrap();
+        prompt();
+        io::stdout().write(&line.as_bytes()).unwrap();
+        io::stdout().flush().unwrap();
+    }
+
+    return AutocompleteResult::More;
 }
