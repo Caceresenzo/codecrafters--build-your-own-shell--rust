@@ -11,13 +11,9 @@ use termios::{tcsetattr, Termios};
 use std::os::unix::process::CommandExt;
 
 use shell_starter_rust::{
-    autocomplete, bell, parse_argv, query, register_default_builtins, AutocompleteResult, RedirectStreams, ShellCommand
+    autocomplete, bell, parse_argv, prompt, query, register_default_builtins, AutocompleteResult,
+    RedirectStreams, ShellCommand,
 };
-
-fn prompt() {
-    io::stdout().write("$ ".as_bytes()).unwrap();
-    io::stdout().flush().unwrap();
-}
 
 enum ReadResult {
     Quit,
@@ -42,6 +38,8 @@ fn read() -> ReadResult {
 
     let mut line = String::new();
     let mut buffer = [0u8];
+
+    let mut bell_rang = false;
 
     let result: ReadResult;
     loop {
@@ -70,15 +68,19 @@ fn read() -> ReadResult {
                 };
                 break;
             }
-            '\t' => {
-                match autocomplete(&mut line) {
-                    AutocompleteResult::None => {
-                        bell();
-                    }
-                    AutocompleteResult::Found => {}
-                    AutocompleteResult::More => {}
+            '\t' => match autocomplete(&mut line, bell_rang) {
+                AutocompleteResult::None => {
+                    bell_rang = false;
+                    bell();
                 }
-            }
+                AutocompleteResult::Found => {
+                    bell_rang = false;
+                }
+                AutocompleteResult::More => {
+                    bell_rang = true;
+                    bell();
+                }
+            },
             '\u{1b}' => {
                 let _ = io::stdin().read(&mut buffer); // '['
                 let _ = io::stdin().read(&mut buffer); // 'A' or 'B' or 'C' or 'D'
