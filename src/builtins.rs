@@ -9,22 +9,22 @@ use std::{
     sync::RwLock,
 };
 
-pub type BuiltinFunction = fn(Vec<String>, &mut RedirectStreams) -> ();
+pub type BuiltinFunction = fn(&Vec<String>, &mut RedirectStreams) -> ();
 pub type BuiltinMap = HashMap<String, BuiltinFunction>;
 
 lazy_static! {
     pub static ref REGISTRY: RwLock<BuiltinMap> = RwLock::new(HashMap::new());
 }
 
-pub fn builtin_exit(_: Vec<String>, _: &mut RedirectStreams) {
+pub fn builtin_exit(_: &Vec<String>, _: &mut RedirectStreams) {
     exit(0);
 }
 
-pub fn builtin_echo(arguments: Vec<String>, io: &mut RedirectStreams) {
+pub fn builtin_echo(arguments: &Vec<String>, io: &mut RedirectStreams) {
     io.println(format!("{}", arguments[1..].join(" ")).as_str());
 }
 
-pub fn builtin_type(arguments: Vec<String>, io: &mut RedirectStreams) {
+pub fn builtin_type(arguments: &Vec<String>, io: &mut RedirectStreams) {
     let program = &arguments[1];
 
     match query(program) {
@@ -36,14 +36,14 @@ pub fn builtin_type(arguments: Vec<String>, io: &mut RedirectStreams) {
     }
 }
 
-pub fn builtin_pwd(_: Vec<String>, io: &mut RedirectStreams) {
+pub fn builtin_pwd(_: &Vec<String>, io: &mut RedirectStreams) {
     match env::current_dir() {
         Err(e) => io.println_error(format!("pwd: {}", e).as_str()),
         Ok(path) => io.println(format!("{}", path.to_str().unwrap()).as_str()),
     }
 }
 
-pub fn builtin_cd(arguments: Vec<String>, io: &mut RedirectStreams) {
+pub fn builtin_cd(arguments: &Vec<String>, io: &mut RedirectStreams) {
     let mut absolute_path: Option<PathBuf> = None;
 
     let path = &arguments[1];

@@ -11,7 +11,7 @@ pub struct RedirectStreams {
 }
 
 impl RedirectStreams {
-    pub fn new(redirects: Vec<Redirect>) -> Result<RedirectStreams, io::Error> {
+    pub fn new(redirects: &Vec<Redirect>) -> Result<RedirectStreams, io::Error> {
         let mut output: Option<File> = None;
         let mut error: Option<File> = None;
 
@@ -21,7 +21,7 @@ impl RedirectStreams {
                 .truncate(!redirect.append)
                 .append(redirect.append)
                 .write(true)
-                .open(redirect.path)?;
+                .open(redirect.path.clone())?;
 
             match redirect.stream_name {
                 StandardNamedStream::Output => output = Some(file),

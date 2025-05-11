@@ -1,18 +1,11 @@
+use std::io::{self, Read, Write};
 use std::os::unix::io::RawFd;
-use std::{
-    fs::File,
-    io::{self, Read, Write},
-    process::{Command, Stdio},
-};
 
 use termios::{tcsetattr, Termios};
 
-#[cfg(unix)]
-use std::os::unix::process::CommandExt;
-
 use shell_starter_rust::{
-    autocomplete, bell, parse_argv, prompt, query, register_default_builtins, AutocompleteResult,
-    RedirectStreams, ShellCommand,
+    autocomplete, bell, parse_argv, prompt, register_default_builtins, run_pipeline, run_single,
+    AutocompleteResult,
 };
 
 enum ReadResult {
@@ -106,41 +99,12 @@ fn read() -> ReadResult {
 }
 
 fn eval(line: String) {
-    let parsed_line = parse_argv(line);
+    let commands = parse_argv(line);
 
-    let arguments = parsed_line.arguments;
-    if arguments.is_empty() {
-        return;
-    }
-
-    let mut redirected_streams = RedirectStreams::new(parsed_line.redirects).unwrap();
-
-    let program = &arguments[0];
-    match query(program) {
-        ShellCommand::Builtin(builtin) => builtin(arguments, &mut redirected_streams),
-        ShellCommand::Executable(path) => {
-            let mut command = Command::new(path);
-
-            #[cfg(unix)]
-            command.arg0(&arguments[0]);
-
-            command
-                .args(&arguments[1..])
-                .stdin(Stdio::inherit())
-                .stdout(if let Some(file) = redirected_streams.output {
-                    From::<File>::from(file)
-                } else {
-                    Stdio::inherit()
-                })
-                .stderr(if let Some(file) = redirected_streams.error {
-                    From::<File>::from(file)
-                } else {
-                    Stdio::inherit()
-                })
-                .output()
-                .expect("failed to execute process");
-        }
-        ShellCommand::None => println!("{}: command not found", program),
+    match commands.len() {
+        0 => return,
+        1 => run_single(&commands[0]),
+        _ => run_pipeline(commands),
     }
 }
 

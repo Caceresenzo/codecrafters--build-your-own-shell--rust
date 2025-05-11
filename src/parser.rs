@@ -6,8 +6,9 @@ const SINGLE: char = '\'';
 const DOUBLE: char = '"';
 const BACKSLASH: char = '\\';
 const GREATER_THAN: char = '>';
+const PIPE: char = '|';
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum StandardNamedStream {
     Unknown = -1,
     Output = 1,
@@ -24,7 +25,7 @@ impl From<u32> for StandardNamedStream {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Redirect {
     pub stream_name: StandardNamedStream,
     pub path: String,
@@ -38,6 +39,7 @@ pub struct ParsedLine {
 
 struct LineParser<'a> {
     chars: Peekable<Chars<'a>>,
+    commands: Vec<ParsedLine>,
     arguments: Vec<String>,
     redirects: Vec<Redirect>,
 }
@@ -46,20 +48,22 @@ impl<'a> LineParser<'a> {
     fn new(line: &'a String) -> LineParser<'a> {
         LineParser {
             chars: line.chars().peekable(),
+            commands: Vec::new(),
             arguments: Vec::new(),
             redirects: Vec::new(),
         }
     }
 
-    fn parse(mut self) -> ParsedLine {
+    fn parse(mut self) -> Vec<ParsedLine> {
         while let Some(argument) = self.next_argument() {
             self.arguments.push(argument);
         }
 
-        return ParsedLine {
-            arguments: self.arguments,
-            redirects: self.redirects,
-        };
+        if !self.arguments.is_empty() {
+            self.pipe();
+        }
+
+        return self.commands;
     }
 
     fn next_argument(&mut self) -> Option<String> {
@@ -94,6 +98,7 @@ impl<'a> LineParser<'a> {
                 }
                 BACKSLASH => self.backslash(&mut builder, false),
                 GREATER_THAN => self.redirect(StandardNamedStream::Output),
+                PIPE => self.pipe(),
                 _ => {
                     if character.is_digit(10) && self.chars.peek() == Some(&GREATER_THAN) {
                         self.chars.next().unwrap();
@@ -146,11 +151,21 @@ impl<'a> LineParser<'a> {
         self.redirects.push(Redirect {
             stream_name,
             path,
-            append
+            append,
         });
+    }
+
+    fn pipe(&mut self) {
+        self.commands.push(ParsedLine {
+            arguments: self.arguments.clone(),
+            redirects: self.redirects.clone(),
+        });
+
+        self.arguments.clear();
+        self.redirects.clear();
     }
 }
 
-pub fn parse_argv(line: String) -> ParsedLine {
+pub fn parse_argv(line: String) -> Vec<ParsedLine> {
     LineParser::new(&line).parse()
 }
