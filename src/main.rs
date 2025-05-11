@@ -1,17 +1,26 @@
+use clap::Parser;
 use std::io::{self, Read, Write};
 use std::os::unix::io::RawFd;
+use std::process::exit;
 
 use termios::{tcsetattr, Termios};
 
 use shell_starter_rust::{
-    autocomplete, bell, parse_argv, prompt, register_default_builtins, run_pipeline, run_single,
-    AutocompleteResult,
+    autocomplete, bell, parse_argv, prompt, query, register_default_builtins, run_pipeline,
+    run_single, AutocompleteResult, RedirectStreams, ShellCommand,
 };
 
 enum ReadResult {
     Quit,
     Empty,
     Content(String),
+}
+
+#[derive(Parser, Debug)]
+#[command(version)]
+struct Args {
+    #[arg(long, num_args=1..=100)]
+    builtin: Vec<String>,
 }
 
 fn read() -> ReadResult {
@@ -109,7 +118,24 @@ fn eval(line: String) {
 }
 
 fn main() {
+    let args = Args::parse();
+
     register_default_builtins();
+
+    if !args.builtin.is_empty() {
+        let program = &args.builtin[0];
+        match query(program) {
+            ShellCommand::Builtin(builtin) => {
+                let mut standard = RedirectStreams::standard();
+                builtin(&args.builtin, &mut standard);
+                exit(0);
+            }
+            _ => {
+                eprintln!("{}: command not found", program);
+                exit(1);
+            }
+        }
+    }
 
     loop {
         match read() {

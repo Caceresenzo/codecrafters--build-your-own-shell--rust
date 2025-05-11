@@ -33,6 +33,13 @@ impl RedirectStreams {
         return Ok(RedirectStreams { output, error });
     }
 
+    pub fn standard() -> RedirectStreams {
+        RedirectStreams {
+            output: None,
+            error: None,
+        }
+    }
+
     pub fn println(&mut self, message: &str) {
         if let Some(file) = &mut self.output {
             writeln!(file, "{message}").expect("could not print to redirected stdout");

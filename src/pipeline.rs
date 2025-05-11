@@ -1,4 +1,5 @@
 use std::{
+    env::current_exe,
     fs::File,
     process::{exit, Child, Command, Stdio},
 };
@@ -57,15 +58,44 @@ fn _do_run_pipeline(parsed_lines: Vec<ParsedLine>) {
     let mut childs: Vec<Box<Child>> = Vec::new();
 
     for (index, parsed_line) in parsed_lines.iter().enumerate() {
-        let mut redirected_streams = RedirectStreams::new(&parsed_line.redirects).unwrap();
+        let redirected_streams = RedirectStreams::new(&parsed_line.redirects).unwrap();
 
         let is_first = index == 0;
         let is_last = index == parsed_lines.len() - 1;
 
         let program = &parsed_line.arguments[0];
         match query(program) {
-            ShellCommand::Builtin(builtin) => {
-                builtin(&parsed_line.arguments, &mut redirected_streams)
+            ShellCommand::Builtin(_) => {
+                let mut command = Command::new(current_exe().unwrap());
+
+                if is_first {
+                    command.stdin(Stdio::inherit());
+                } else {
+                    command.stdin(childs[index - 1].stdout.take().unwrap());
+                }
+
+                let mut arguments: Vec<String> = Vec::new();
+                arguments.push("--builtin".into());
+                arguments.extend(parsed_line.arguments.clone());
+
+                let child = command
+                    .args(arguments)
+                    .stdout(if let Some(file) = redirected_streams.output {
+                        From::<File>::from(file)
+                    } else if is_last {
+                        Stdio::inherit()
+                    } else {
+                        Stdio::piped()
+                    })
+                    .stderr(if let Some(file) = redirected_streams.error {
+                        From::<File>::from(file)
+                    } else {
+                        Stdio::piped()
+                    })
+                    .spawn()
+                    .expect("failed to execute process");
+
+                childs.push(Box::new(child));
             }
             ShellCommand::Executable(path) => {
                 let mut command = Command::new(path);
