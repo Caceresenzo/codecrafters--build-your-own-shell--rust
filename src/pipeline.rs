@@ -90,7 +90,7 @@ fn _do_run_pipeline(parsed_lines: Vec<ParsedLine>) {
                     .stderr(if let Some(file) = redirected_streams.error {
                         From::<File>::from(file)
                     } else {
-                        Stdio::piped()
+                        Stdio::inherit()
                     })
                     .spawn()
                     .expect("failed to execute process");
@@ -121,7 +121,7 @@ fn _do_run_pipeline(parsed_lines: Vec<ParsedLine>) {
                     .stderr(if let Some(file) = redirected_streams.error {
                         From::<File>::from(file)
                     } else {
-                        Stdio::piped()
+                        Stdio::inherit()
                     })
                     .spawn()
                     .expect("failed to execute process");
