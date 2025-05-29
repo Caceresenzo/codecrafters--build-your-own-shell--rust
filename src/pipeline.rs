@@ -7,10 +7,10 @@ use std::{
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 
-use crate::{query, ParsedLine, RedirectStreams, ShellCommand};
+use crate::{ParsedLine, RedirectStreams, Shell, ShellCommand};
 use fork::{fork, waitpid, Fork};
 
-pub fn run_single(parsed_line: &ParsedLine) {
+pub fn run_single(shell: &mut Shell, parsed_line: &ParsedLine) {
     let arguments = &parsed_line.arguments;
     if arguments.is_empty() {
         return;
@@ -19,8 +19,8 @@ pub fn run_single(parsed_line: &ParsedLine) {
     let mut redirected_streams = RedirectStreams::new(&parsed_line.redirects).unwrap();
 
     let program = &arguments[0];
-    match query(program) {
-        ShellCommand::Builtin(builtin) => builtin(&arguments, &mut redirected_streams),
+    match shell.query(program) {
+        ShellCommand::Builtin(builtin) => builtin(shell, &arguments, &mut redirected_streams),
         ShellCommand::Executable(path) => {
             let mut command = Command::new(path);
 
@@ -47,14 +47,14 @@ pub fn run_single(parsed_line: &ParsedLine) {
     }
 }
 
-pub fn run_pipeline(commands: Vec<ParsedLine>) {
+pub fn run_pipeline(shell: &mut Shell, commands: Vec<ParsedLine>) {
     match fork().unwrap() {
         Fork::Parent(child) => waitpid(child).unwrap(),
-        Fork::Child => _do_run_pipeline(commands),
+        Fork::Child => _do_run_pipeline(shell, commands),
     }
 }
 
-fn _do_run_pipeline(parsed_lines: Vec<ParsedLine>) {
+fn _do_run_pipeline(shell: &mut Shell, parsed_lines: Vec<ParsedLine>) {
     let mut childs: Vec<Box<Child>> = Vec::new();
 
     for (index, parsed_line) in parsed_lines.iter().enumerate() {
@@ -64,7 +64,7 @@ fn _do_run_pipeline(parsed_lines: Vec<ParsedLine>) {
         let is_last = index == parsed_lines.len() - 1;
 
         let program = &parsed_line.arguments[0];
-        match query(program) {
+        match shell.query(program) {
             ShellCommand::Builtin(_) => {
                 let mut command = Command::new(current_exe().unwrap());
 

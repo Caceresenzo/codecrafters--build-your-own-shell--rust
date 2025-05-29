@@ -7,7 +7,7 @@ use std::{
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use crate::REGISTRY;
+use crate::Shell;
 
 pub fn prompt() {
     io::stdout().write("$ ".as_bytes()).unwrap();
@@ -66,10 +66,10 @@ fn find_shared_prefix(candidates: &Vec<String>) -> String {
     return first[..end].to_string();
 }
 
-pub fn autocomplete(line: &mut String, bell_rang: bool) -> AutocompleteResult {
+pub fn autocomplete(shell: &Shell, line: &mut String, bell_rang: bool) -> AutocompleteResult {
     let mut candidates: Vec<String> = Vec::new();
 
-    for key in REGISTRY.read().unwrap().keys() {
+    for key in shell.builtins.keys() {
         if key.starts_with(&*line) {
             let candidate = &key[line.len()..];
             candidates.push(candidate.to_string());
