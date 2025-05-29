@@ -23,6 +23,27 @@ struct Args {
     builtin: Vec<String>,
 }
 
+const UP: u8 = b'A';
+
+fn change_line(line: &mut String, new_content: &String) {
+    let mut backspaces = String::new();
+    let mut spaces = String::new();
+    for _ in 0..line.len() {
+        backspaces.push('\u{8}');
+        spaces.push(' ');
+    }
+
+    io::stdout().write(backspaces.as_bytes()).unwrap();
+    io::stdout().write(spaces.as_bytes()).unwrap();
+    io::stdout().write(backspaces.as_bytes()).unwrap();
+
+    io::stdout().write(new_content.as_bytes()).unwrap();
+    io::stdout().flush().unwrap();
+
+    line.clear();
+    line.push_str(new_content);
+}
+
 fn read(shell: &Shell) -> ReadResult {
     prompt();
 
@@ -37,6 +58,9 @@ fn read(shell: &Shell) -> ReadResult {
     new.c_cc[termios::VTIME] = 0;
 
     tcsetattr(stdin_fd, termios::TCSANOW, &new).unwrap();
+
+    let history_len = shell.history.len();
+    let mut history_position = history_len;
 
     let mut line = String::new();
     let mut buffer = [0u8];
@@ -85,7 +109,15 @@ fn read(shell: &Shell) -> ReadResult {
             },
             '\u{1b}' => {
                 let _ = io::stdin().read(&mut buffer); // '['
-                let _ = io::stdin().read(&mut buffer); // 'A' or 'B' or 'C' or 'D'
+
+                if let Ok(_) = io::stdin().read(&mut buffer) {
+                    let direction = buffer[0];
+
+                    if direction == UP && history_position != 0 {
+                        history_position -= 1;
+                        change_line(&mut line, &shell.history[history_position]);
+                    }
+                }
             }
             '\u{7f}' => {
                 if line.len() != 0 {
@@ -121,6 +153,9 @@ fn eval(shell: &mut Shell, line: String) {
 
 fn main() {
     let mut shell = Shell::new();
+    // shell.history.push("111".to_string());
+    // shell.history.push("222".to_string());
+    // shell.history.push("333".to_string());
 
     let args = Args::parse();
     if !args.builtin.is_empty() {
