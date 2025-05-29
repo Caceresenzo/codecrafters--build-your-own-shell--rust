@@ -69,6 +69,8 @@ pub fn builtin_cd(arguments: &Vec<String>, io: &mut RedirectStreams) {
     }
 }
 
+pub fn builtin_history(_: &Vec<String>, _: &mut RedirectStreams) {}
+
 pub fn register_default_builtins() {
     let mut builtins = REGISTRY.write().unwrap();
     builtins.insert("exit".into(), builtin_exit);
@@ -76,4 +78,5 @@ pub fn register_default_builtins() {
     builtins.insert("type".into(), builtin_type);
     builtins.insert("pwd".into(), builtin_pwd);
     builtins.insert("cd".into(), builtin_cd);
+    builtins.insert("history".into(), builtin_history);
 }
