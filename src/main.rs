@@ -6,8 +6,8 @@ use std::process::exit;
 use termios::{tcsetattr, Termios};
 
 use shell_starter_rust::{
-    autocomplete, bell, parse_argv, prompt, query, register_default_builtins, run_pipeline,
-    run_single, AutocompleteResult, RedirectStreams, ShellCommand,
+    autocomplete, bell, parse_argv, prompt, run_pipeline, run_single, AutocompleteResult,
+    RedirectStreams, Shell, ShellCommand,
 };
 
 enum ReadResult {
@@ -23,7 +23,7 @@ struct Args {
     builtin: Vec<String>,
 }
 
-fn read() -> ReadResult {
+fn read(shell: &Shell) -> ReadResult {
     prompt();
 
     let stdin_fd: RawFd = 0;
@@ -70,7 +70,7 @@ fn read() -> ReadResult {
                 };
                 break;
             }
-            '\t' => match autocomplete(&mut line, bell_rang) {
+            '\t' => match autocomplete(shell, &mut line, bell_rang) {
                 AutocompleteResult::None => {
                     bell_rang = false;
                     bell();
@@ -107,27 +107,28 @@ fn read() -> ReadResult {
     return result;
 }
 
-fn eval(line: String) {
+fn eval(shell: &mut Shell, line: String) {
+    shell.history.push(line.clone());
+
     let commands = parse_argv(line);
 
     match commands.len() {
         0 => return,
-        1 => run_single(&commands[0]),
-        _ => run_pipeline(commands),
+        1 => run_single(shell, &commands[0]),
+        _ => run_pipeline(shell, commands),
     }
 }
 
 fn main() {
+    let mut shell = Shell::new();
+
     let args = Args::parse();
-
-    register_default_builtins();
-
     if !args.builtin.is_empty() {
         let program = &args.builtin[0];
-        match query(program) {
+        match shell.query(program) {
             ShellCommand::Builtin(builtin) => {
                 let mut standard = RedirectStreams::standard();
-                builtin(&args.builtin, &mut standard);
+                builtin(&mut shell, &args.builtin, &mut standard);
                 exit(0);
             }
             _ => {
@@ -138,10 +139,10 @@ fn main() {
     }
 
     loop {
-        match read() {
+        match read(&shell) {
             ReadResult::Quit => break,
             ReadResult::Empty => continue,
-            ReadResult::Content(line) => eval(line),
+            ReadResult::Content(line) => eval(&mut shell, line),
         }
     }
 }
