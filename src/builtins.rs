@@ -63,8 +63,19 @@ pub fn builtin_cd(_: &mut Shell, arguments: &Vec<String>, io: &mut RedirectStrea
     }
 }
 
-pub fn builtin_history(shell: &mut Shell, _: &Vec<String>, _: &mut RedirectStreams) {
-    for (index, command) in shell.history.iter().enumerate() {
-        println!("{:5}  {}", index + 1, command);
+pub fn builtin_history(shell: &mut Shell, arguments: &Vec<String>, io: &mut RedirectStreams) {
+    let mut start = 0;
+    if arguments.len() > 1 {
+        start = match arguments[1].parse::<usize>() {
+            Ok(value) => shell.history.len() - value,
+            Err(_) => {
+                io.println_error("history: invalid number");
+                return;
+            }
+        };
+    }
+
+    for (index, command) in shell.history.iter().skip(start).enumerate() {
+        println!("{:5}  {}", start + index + 1, command);
     }
 }
