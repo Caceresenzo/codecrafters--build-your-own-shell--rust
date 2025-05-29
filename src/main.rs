@@ -24,6 +24,7 @@ struct Args {
 }
 
 const UP: u8 = b'A';
+const DOWN: u8 = b'B';
 
 fn change_line(line: &mut String, new_content: &String) {
     let mut backspaces = String::new();
@@ -116,6 +117,14 @@ fn read(shell: &Shell) -> ReadResult {
                     if direction == UP && history_position != 0 {
                         history_position -= 1;
                         change_line(&mut line, &shell.history[history_position]);
+                    } else if direction == DOWN && history_position < history_len {
+                        history_position += 1;
+
+                        if history_position == history_len {
+                            change_line(&mut line, &"".to_string());
+                        } else {
+                            change_line(&mut line, &shell.history[history_position]);
+                        }
                     }
                 }
             }
