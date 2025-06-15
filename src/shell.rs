@@ -47,4 +47,10 @@ impl Shell {
 
         return ShellCommand::None;
     }
+
+    pub fn read_history(&mut self, path: &String) {
+        if let Ok(lines) = std::fs::read_to_string(path) {
+            self.history.extend(lines.lines().map(String::from));
+        }
+    }
 }
