@@ -12,6 +12,7 @@ pub enum ShellCommand {
 pub struct Shell {
     pub builtins: BuiltinMap,
     pub history: Vec<String>,
+    last_history_append_index: usize,
 }
 
 impl Shell {
@@ -27,6 +28,7 @@ impl Shell {
         Shell {
             builtins,
             history: Vec::new(),
+            last_history_append_index: 0,
         }
     }
 
@@ -56,5 +58,14 @@ impl Shell {
 
     pub fn write_history(&self, path: &String) {
         std::fs::write(path, self.history.join("\n") + "\n").unwrap();
+    }
+
+    pub fn append_history(&mut self, path: &String) {
+        std::fs::write(
+            path,
+            self.history[self.last_history_append_index..].join("\n") + "\n",
+        )
+        .unwrap();
+        self.last_history_append_index = self.history.len();
     }
 }
