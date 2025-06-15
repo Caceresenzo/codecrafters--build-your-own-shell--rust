@@ -32,9 +32,9 @@ impl Shell {
             last_history_append_index: 0,
         };
 
-        shell.get_history_file().inspect(|path| {
-            shell.read_history(path);
-        });
+        if let Some(path) = shell.get_history_file() {
+            shell.read_history(&path);
+        }
 
         shell
     }
@@ -95,6 +95,12 @@ impl Shell {
 
         for line in lines.iter() {
             writeln!(file, "{}", line).unwrap();
+        }
+    }
+
+    pub fn finish(&mut self) {
+        if let Some(path) = self.get_history_file() {
+            self.write_history(&path);
         }
     }
 }

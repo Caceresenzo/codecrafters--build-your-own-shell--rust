@@ -10,16 +10,16 @@ use std::os::unix::process::CommandExt;
 use crate::{ParsedLine, RedirectStreams, Shell, ShellCommand};
 use fork::{fork, waitpid, Fork};
 
-pub fn run_single(shell: &mut Shell, parsed_line: &ParsedLine) {
+pub fn run_single(shell: &mut Shell, parsed_line: &ParsedLine) -> Option<i32> {
     let arguments = &parsed_line.arguments;
     if arguments.is_empty() {
-        return;
+        return None;
     }
 
     let mut redirected_streams = RedirectStreams::new(&parsed_line.redirects).unwrap();
 
     let program = &arguments[0];
-    match shell.query(program) {
+    return match shell.query(program) {
         ShellCommand::Builtin(builtin) => builtin(shell, &arguments, &mut redirected_streams),
         ShellCommand::Executable(path) => {
             let mut command = Command::new(path);
@@ -42,8 +42,13 @@ pub fn run_single(shell: &mut Shell, parsed_line: &ParsedLine) {
                 })
                 .output()
                 .expect("failed to execute process");
+
+            None
         }
-        ShellCommand::None => eprintln!("{}: command not found", program),
+        ShellCommand::None => {
+            eprintln!("{}: command not found", program);
+            None
+        },
     }
 }
 

@@ -4,21 +4,30 @@ use std::{
     env,
     option::Option,
     path::{Path, PathBuf},
-    process::exit,
 };
 
-pub type BuiltinFunction = fn(&mut Shell, &Vec<String>, &mut RedirectStreams) -> ();
+pub type BuiltinFunction = fn(&mut Shell, &Vec<String>, &mut RedirectStreams) -> Option<i32>;
 pub type BuiltinMap = HashMap<String, BuiltinFunction>;
 
-pub fn builtin_exit(_: &mut Shell, _: &Vec<String>, _: &mut RedirectStreams) {
-    exit(0);
+pub fn builtin_exit(_: &mut Shell, _: &Vec<String>, _: &mut RedirectStreams) -> Option<i32> {
+    Some(0)
 }
 
-pub fn builtin_echo(_: &mut Shell, arguments: &Vec<String>, io: &mut RedirectStreams) {
+pub fn builtin_echo(
+    _: &mut Shell,
+    arguments: &Vec<String>,
+    io: &mut RedirectStreams,
+) -> Option<i32> {
     io.println(format!("{}", arguments[1..].join(" ")).as_str());
+
+    None
 }
 
-pub fn builtin_type(shell: &mut Shell, arguments: &Vec<String>, io: &mut RedirectStreams) {
+pub fn builtin_type(
+    shell: &mut Shell,
+    arguments: &Vec<String>,
+    io: &mut RedirectStreams,
+) -> Option<i32> {
     let program = &arguments[1];
 
     match shell.query(program) {
@@ -28,16 +37,20 @@ pub fn builtin_type(shell: &mut Shell, arguments: &Vec<String>, io: &mut Redirec
         }
         ShellCommand::None => io.println(format!("{}: not found", program).as_str()),
     }
+
+    None
 }
 
-pub fn builtin_pwd(_: &mut Shell, _: &Vec<String>, io: &mut RedirectStreams) {
+pub fn builtin_pwd(_: &mut Shell, _: &Vec<String>, io: &mut RedirectStreams) -> Option<i32> {
     match env::current_dir() {
         Err(e) => io.println_error(format!("pwd: {}", e).as_str()),
         Ok(path) => io.println(format!("{}", path.to_str().unwrap()).as_str()),
     }
+
+    None
 }
 
-pub fn builtin_cd(_: &mut Shell, arguments: &Vec<String>, io: &mut RedirectStreams) {
+pub fn builtin_cd(_: &mut Shell, arguments: &Vec<String>, io: &mut RedirectStreams) -> Option<i32> {
     let mut absolute_path: Option<PathBuf> = None;
 
     let path = &arguments[1];
@@ -61,6 +74,8 @@ pub fn builtin_cd(_: &mut Shell, arguments: &Vec<String>, io: &mut RedirectStrea
             io.println_error(format!("cd: {}: No such file or directory", path).as_str());
         }
     }
+
+    None
 }
 
 fn print_history(start: usize, shell: &Shell, io: &mut RedirectStreams) {
@@ -69,7 +84,11 @@ fn print_history(start: usize, shell: &Shell, io: &mut RedirectStreams) {
     }
 }
 
-pub fn builtin_history(shell: &mut Shell, arguments: &Vec<String>, io: &mut RedirectStreams) {
+pub fn builtin_history(
+    shell: &mut Shell,
+    arguments: &Vec<String>,
+    io: &mut RedirectStreams,
+) -> Option<i32> {
     let first = if arguments.len() > 1 {
         Some(&arguments[1])
     } else {
@@ -77,35 +96,16 @@ pub fn builtin_history(shell: &mut Shell, arguments: &Vec<String>, io: &mut Redi
     };
 
     match first {
-        Some(arg) if arg == "-r" => {
-            shell.read_history(&arguments[2]);
-            return;
-        }
-
-        Some(arg) if arg == "-w" => {
-            shell.write_history(&arguments[2]);
-            return;
-        }
-
-        Some(arg) if arg == "-a" => {
-            shell.append_history(&arguments[2]);
-            return;
-        }
-
+        Some(arg) if arg == "-r" => shell.read_history(&arguments[2]),
+        Some(arg) if arg == "-w" => shell.write_history(&arguments[2]),
+        Some(arg) if arg == "-a" => shell.append_history(&arguments[2]),
         Some(value) if value.chars().all(char::is_numeric) => {
             let start = shell.history.len() - value.parse::<usize>().unwrap();
-
             print_history(start, shell, io);
-            return;
         }
-
-        None => {
-            print_history(0, shell, io);
-            return;
-        }
-
-        _ => {
-            io.println_error("history: invalid parameter");
-        }
+        None => print_history(0, shell, io),
+        _ => io.println_error("history: invalid parameter"),
     }
+
+    None
 }
