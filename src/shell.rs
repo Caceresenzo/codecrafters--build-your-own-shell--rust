@@ -2,6 +2,7 @@ use crate::*;
 use std::{
     env,
     path::{Path, PathBuf},
+    io::Write,
 };
 pub enum ShellCommand {
     Builtin(BuiltinFunction),
@@ -12,6 +13,7 @@ pub enum ShellCommand {
 pub struct Shell {
     pub builtins: BuiltinMap,
     pub history: Vec<String>,
+    last_history_append_index: usize,
 }
 
 impl Shell {
@@ -27,6 +29,7 @@ impl Shell {
         Shell {
             builtins,
             history: Vec::new(),
+            last_history_append_index: 0,
         }
     }
 
@@ -55,6 +58,24 @@ impl Shell {
     }
 
     pub fn write_history(&self, path: &String) {
-        std::fs::write(path, self.history.join("\n") + "\n").unwrap();
+         self.do_write_history(&self.history, path, false);
+    }
+
+    pub fn append_history(&mut self, path: &String) {
+        self.do_write_history(&self.history[self.last_history_append_index..], path, true);
+
+        self.last_history_append_index = self.history.len();
+    }
+
+    fn do_write_history(&self, lines: &[String], path: &String, append: bool) {
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .append(append)
+            .open(path)
+            .unwrap();
+
+        for line in lines.iter() {
+            writeln!(file, "{}", line).unwrap();
+        }
     }
 }
