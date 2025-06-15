@@ -87,6 +87,11 @@ pub fn builtin_history(shell: &mut Shell, arguments: &Vec<String>, io: &mut Redi
             return;
         }
 
+        Some(arg) if arg == "-a" => {
+            shell.append_history(&arguments[2]);
+            return;
+        }
+
         Some(value) if value.chars().all(char::is_numeric) => {
             let start = shell.history.len() - value.parse::<usize>().unwrap();
 
