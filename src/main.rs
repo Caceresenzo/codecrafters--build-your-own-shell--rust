@@ -148,15 +148,18 @@ fn read(shell: &Shell) -> ReadResult {
     return result;
 }
 
-fn eval(shell: &mut Shell, line: String) {
+fn eval(shell: &mut Shell, line: String) -> Option<i32> {
     shell.history.push(line.clone());
 
     let commands = parse_argv(line);
 
-    match commands.len() {
-        0 => return,
+    return match commands.len() {
+        0 => None,
         1 => run_single(shell, &commands[0]),
-        _ => run_pipeline(shell, commands),
+        _ => {
+            run_pipeline(shell, commands);
+            None
+        },
     }
 }
 
@@ -182,11 +185,21 @@ fn main() {
         }
     }
 
+    let mut exit_code = 0;
     loop {
         match read(&shell) {
             ReadResult::Quit => break,
             ReadResult::Empty => continue,
-            ReadResult::Content(line) => eval(&mut shell, line),
+            ReadResult::Content(line) => {
+                if let Some(code) = eval(&mut shell, line) {
+                    exit_code = code;
+                    break;
+                }
+            },
         }
     }
+
+    shell.finish();
+
+    exit(exit_code);
 }

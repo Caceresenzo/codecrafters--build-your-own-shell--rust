@@ -1,0 +1,4 @@
+qsd
+history -w a
+qsd
+exit
