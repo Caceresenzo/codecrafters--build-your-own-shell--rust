@@ -26,11 +26,17 @@ impl Shell {
         builtins.insert("cd".into(), builtin_cd);
         builtins.insert("history".into(), builtin_history);
 
-        Shell {
+        let mut shell = Shell {
             builtins,
             history: Vec::new(),
             last_history_append_index: 0,
-        }
+        };
+
+        shell.get_history_file().inspect(|path| {
+            shell.read_history(path);
+        });
+
+        shell
     }
 
     pub fn query(&self, program: &String) -> ShellCommand {
@@ -49,6 +55,17 @@ impl Shell {
         }
 
         return ShellCommand::None;
+    }
+
+    pub fn get_history_file(&self) -> Option<String> {
+        if let Ok(histfile) = env::var("HISTFILE") {
+            let path = Path::new(&histfile);
+            if path.exists() {
+                return Some(path.to_path_buf().to_str().unwrap().to_string());
+            }
+        }
+
+        None
     }
 
     pub fn read_history(&mut self, path: &String) {
