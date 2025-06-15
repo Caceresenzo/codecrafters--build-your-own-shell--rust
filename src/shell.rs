@@ -53,4 +53,8 @@ impl Shell {
             self.history.extend(lines.lines().map(String::from));
         }
     }
+
+    pub fn write_history(&self, path: &String) {
+        std::fs::write(path, self.history.join("\n") + "\n").unwrap();
+    }
 }
